@@ -1,19 +1,22 @@
 package com.wang.gmallpublisher.controller;
 
 import com.wang.gmallpublisher.service.DauService;
+import com.wang.gmallpublisher.service.GmvService;
+import com.wang.gmallpublisher.utils.DateUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 @RestController
 public class DauController {
     @Autowired
     DauService dauService;
+
+    @Autowired
+    GmvService gmvService;
 
     @GetMapping("realtime-total")
     public List<Map> selectTotal(@RequestParam("date") String date){
@@ -32,8 +35,16 @@ public class DauController {
         newMidMap.put("name", "新增设备");
         newMidMap.put("value", "2455");
 
+        //创建Map用于存放GMV数据
+        Double amount = gmvService.selectOrderAmountTotal(date);
+        HashMap<String, Object> gmvMap = new HashMap<>();
+        gmvMap.put("id", "order_amount");
+        gmvMap.put("name", "新增交易额");
+        gmvMap.put("value", amount);
+
         result.add(dauMap);
         result.add(newMidMap);
+        result.add(gmvMap);
 
         return result;
     }
@@ -41,28 +52,21 @@ public class DauController {
     @GetMapping("realtime-hours")
     public Map<String, Map> selectDauTotalHourMap(@RequestParam("id") String id, @RequestParam("date") String date) {
         Map<String, Map> result = new HashMap<>();
-
-        Map todayMap = dauService.selectDauTotalHourMap(date);
-
-        //查询昨日数据 date:2020-02-18
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        Calendar instance = Calendar.getInstance();
-        try {
-            instance.setTime(sdf.parse(date));
-        } catch (ParseException e) {
-            e.printStackTrace();
+        String yesterDay = DateUtil.getYesterDay(date);
+        Map todayMap = null;
+        Map yesterdayMap = null;
+        if("dau".equals(id)){
+            todayMap= dauService.selectDauTotalHourMap(date);
+            yesterdayMap = dauService.selectDauTotalHourMap(yesterDay);
+        }else{
+            // gmv 数据
+            todayMap= gmvService.selectOrderAmountHourMap(date);
+            yesterdayMap = gmvService.selectOrderAmountHourMap(yesterDay);
         }
-        //将当天时间减一
-        instance.add(Calendar.DAY_OF_MONTH, -1);
-        //2020-02-18
-        String yesterday = sdf.format(new Date(instance.getTimeInMillis()));
-
-        Map yesterdayMap = dauService.selectDauTotalHourMap(yesterday);
 
         result.put("yesterday", yesterdayMap);
         result.put("today", todayMap);
 
         return result;
     }
-
     }
