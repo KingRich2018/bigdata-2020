@@ -22,7 +22,7 @@ object GmvApp {
     val ssc = new StreamingContext(sparkConf, Seconds(3))
 
     //3.读取Kafka数据创建DStream
-    val kafkaDStream: InputDStream[(String, String)] = MyKafkaUtil.getKafkaStream(ssc, Set(GmallConstants.KAFKA_TOPIC_ORDER_DETAIL))
+    val kafkaDStream: InputDStream[(String, String)] = MyKafkaUtil.getKafkaStream(ssc, Set(GmallConstants.KAFKA_TOPIC_NEW_ORDER))
 
     //4.将每一行数据转换为样例类对象
     val orderInfoDStream: DStream[OrderInfo] = kafkaDStream.map { case (_, value) =>

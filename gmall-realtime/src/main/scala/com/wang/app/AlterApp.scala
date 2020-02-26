@@ -7,7 +7,7 @@ import java.util
 import com.alibaba.fastjson.JSON
 import com.wang.bean.{CouponAlertInfo, EventLog}
 import com.wang.constant.GmallConstants
-import com.wang.utils.MyKafkaUtil
+import com.wang.utils.{MyEsUtil, MyKafkaUtil}
 import org.apache.spark.SparkConf
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -86,9 +86,18 @@ object AlterApp {
 
 
     // 过滤
-    boolToAlterInfoDStream.filter(_._1)
+    val alertInfoDStream: DStream[CouponAlertInfo] = boolToAlterInfoDStream.filter(_._1)
       .map(_._2)
-      .print()
+    val minAlertInfoDStream: DStream[(String, CouponAlertInfo)] = alertInfoDStream.map(log => {
+      val ts: Long = log.ts
+      val min: Long = ts / 1000 / 60
+      (log.mid+"_"+min.toString, log)
+    })
+    minAlertInfoDStream.foreachRDD(rdd=>{
+      rdd.foreachPartition(midToLogIter=>{
+        MyEsUtil.insertBulk(GmallConstants.GMALL_ALERT_INFO_INDEX,midToLogIter.toList)
+      })
+    })
 
     ssc.start()
     ssc.awaitTermination()

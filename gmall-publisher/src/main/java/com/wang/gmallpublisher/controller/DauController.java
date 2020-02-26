@@ -41,7 +41,6 @@ public class DauController {
         gmvMap.put("id", "order_amount");
         gmvMap.put("name", "新增交易额");
         gmvMap.put("value", amount);
-
         result.add(dauMap);
         result.add(newMidMap);
         result.add(gmvMap);

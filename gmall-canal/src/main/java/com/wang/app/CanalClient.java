@@ -11,6 +11,7 @@ import com.wang.utils.KafkaSender;
 import org.springframework.util.CollectionUtils;
 
 import java.net.InetSocketAddress;
+import java.util.Random;
 
 public class CanalClient {
     public static void main(String[] args) {
@@ -64,22 +65,38 @@ public class CanalClient {
         //订单表并且是下单数据
         if ("order_info".equals(tableName) && CanalEntry.EventType.INSERT.equals(eventType)) {
 
-            rowChange.getRowDatasList().stream().forEach(
-                    rowData -> {
-                        //创建JSON对象，用于存放一行数据
-                        JSONObject jsonObject = new JSONObject();
+            sendKafka(rowChange,GmallConstants.KAFKA_TOPIC_NEW_ORDER);
+        }else if("order_detail".equals(tableName) && CanalEntry.EventType.INSERT.equals(eventType)){
+            // 将数据写入订单详情主题
+            sendKafka(rowChange,GmallConstants.KAFKA_TOPIC_ORDER_DETAIL);
 
-                        rowData.getAfterColumnsList().stream().forEach(
-                                column -> {
-                                    jsonObject.put(column.getName(), column.getValue());
-                                }
-                        );
-                        //发送至Kafka
-                        System.out.println(jsonObject.toString());
-                        KafkaSender.send(GmallConstants.KAFKA_TOPIC_ORDER_DETAIL, jsonObject.toString());
-                    }
-            );
+        }else if("user_info".equals(tableName) && (CanalEntry.EventType.INSERT.equals(eventType)
+        || CanalEntry.EventType.UPDATE.equals(eventType) )){
+            sendKafka(rowChange,GmallConstants.KAFKA_TOPIC_USER_INFO);
         }
+    }
+
+    private static void sendKafka(CanalEntry.RowChange rowChange,String topic) {
+        rowChange.getRowDatasList().stream().forEach(
+                rowData -> {
+                    //创建JSON对象，用于存放一行数据
+                    JSONObject jsonObject = new JSONObject();
+
+                    rowData.getAfterColumnsList().stream().forEach(
+                            column -> {
+                                jsonObject.put(column.getName(), column.getValue());
+                            }
+                    );
+                    //发送至Kafka
+                    System.out.println(jsonObject.toString());
+                    try {
+                        Thread.sleep(new Random().nextInt(5) * 1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    KafkaSender.send(topic, jsonObject.toString());
+                }
+        );
     }
 
 
